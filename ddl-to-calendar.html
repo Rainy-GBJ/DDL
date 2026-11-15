@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>DDL 转日历</title>
+<style>
+  :root{
+    --paper:#f5f1e8;
+    --card:#fffdf8;
+    --ink:#231f19;
+    --muted:#7d7466;
+    --line:#e2dbcb;
+    --accent:#1f6b5c;
+    --accent-soft:#e4efe9;
+    --warn:#a8541f;
+    --warn-soft:#fbeee2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+    font-size:15px;
+    line-height:1.6;
+    -webkit-text-size-adjust:100%;
+    padding:0 16px 64px;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+  header{padding:36px 0 20px}
+  .brand{display:flex;align-items:baseline;gap:7px;margin:0 0 14px;font-size:13px;letter-spacing:.02em}
+  .brand-main{font-weight:700;color:var(--ink);font-size:14.5px;letter-spacing:.01em}
+  .brand-x{color:var(--line);font-size:12px}
+  .brand-cupl{font-weight:700;color:var(--accent);font-size:12.5px;letter-spacing:.14em}
+  .tag{
+    display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:6px;
+    letter-spacing:.02em;vertical-align:middle;margin-left:7px;
+  }
+  .tag.urgent{background:#fdecea;color:#b3261e}
+  .tag.soon{background:#fff3e0;color:#9a5b00}
+  .tag.later{background:#eef3f1;color:#4b6b62}
+  .tag.past{background:#eeeae2;color:#8b8375}
+  .item.past{opacity:.55}
+  .urgentOpt{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:14px;color:var(--ink);cursor:pointer}
+  .urgentOpt input{width:18px;height:18px;flex:0 0 auto;padding:0;accent-color:var(--accent)}
+  .eyebrow{
+    font-size:12px;letter-spacing:.12em;color:var(--accent);
+    text-transform:uppercase;font-weight:600;margin:0 0 10px
+  }
+  h1{font-size:27px;line-height:1.25;margin:0 0 10px;font-weight:700;letter-spacing:-.01em}
+  .lede{margin:0;color:var(--muted);font-size:14.5px;max-width:52ch}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:18px;margin:0 0 16px;
+  }
+  .card h2{
+    font-size:13px;letter-spacing:.06em;font-weight:700;color:var(--muted);
+    margin:0 0 12px;text-transform:uppercase
+  }
+  textarea{
+    width:100%;min-height:150px;resize:vertical;
+    font-family:inherit;font-size:16px;line-height:1.7;
+    padding:12px 13px;border:1px solid var(--line);border-radius:10px;
+    background:#fffefb;color:var(--ink);
+  }
+  textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  input{font-family:inherit;font-size:16px;color:var(--ink);background:#fffefb;
+    border:1px solid var(--line);border-radius:8px;padding:8px 9px;width:100%}
+  .row-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  button{
+    font-family:inherit;font-size:15px;font-weight:600;
+    border-radius:9px;padding:10px 16px;border:1px solid transparent;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  .primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .primary:active{background:#17564a}
+  .primary:disabled{background:#b7c6c1;border-color:#b7c6c1;cursor:default}
+  .ghost{background:transparent;color:var(--muted);border-color:var(--line)}
+  .ghost:active{background:#efe9dc}
+  .big{width:100%;padding:15px;font-size:16.5px;margin-top:14px}
+  .hint{color:var(--muted);font-size:13px;margin:10px 0 0}
+  .count{font-weight:700;color:var(--ink)}
+
+  .item{
+    border:1px solid var(--line);border-radius:11px;padding:12px;
+    margin-bottom:10px;background:#fffefb;
+  }
+  .item-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:9px}
+  .item-head input{flex:1}
+  .del{
+    flex:0 0 auto;background:transparent;border:1px solid var(--line);
+    color:var(--muted);border-radius:8px;width:36px;height:38px;padding:0;
+    font-size:18px;line-height:1;font-weight:400;
+  }
+  .meta{display:grid;grid-template-columns:1.15fr 1fr;gap:8px}
+  .meta label{display:block}
+  .meta .lbl{font-size:11.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:3px;display:block}
+  .wk{font-size:12px;color:var(--accent);margin-top:3px;display:block;min-height:1em}
+  .raw{margin:9px 0 0;padding:0;border:0;background:transparent}
+  .raw summary{font-size:12px;color:var(--muted);cursor:pointer;list-style:none}
+  .raw summary::-webkit-details-marker{display:none}
+  .raw summary::before{content:'▸ ';font-size:10px}
+  .raw[open] summary::before{content:'▾ '}
+  .raw p{margin:5px 0 0;font-size:12px;color:var(--muted);background:#f4efe4;
+    padding:7px 9px;border-radius:7px;line-height:1.5;word-break:break-all}
+  .preview{margin:10px 0 0;padding:10px 12px;background:#f4efe4;border-radius:8px;
+    font-size:12.5px;line-height:1.75;color:#4a4438;white-space:pre-wrap;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;max-height:190px;overflow:auto}
+  .points{margin:10px 0 0;padding:8px 10px 8px 26px;background:var(--accent-soft);border-radius:8px;font-size:13px;color:#2f4a43}
+  .points li{margin:2px 0}
+  .miss{border-color:#e2b591;background:var(--warn-soft)}
+  .miss .lbl{color:var(--warn)}
+
+  .unparsed{background:var(--warn-soft);border:1px solid #ecd2b9;border-radius:12px;padding:14px;margin:0 0 16px}
+  .unparsed h3{margin:0 0 6px;font-size:14px;color:var(--warn)}
+  .unparsed p{margin:0 0 10px;font-size:13px;color:#7a5232}
+  .unparsed li{font-size:14px;margin:5px 0;display:flex;gap:8px;align-items:flex-start}
+  .unparsed ul{list-style:none;margin:0;padding:0}
+  .unparsed .txt{flex:1;word-break:break-all}
+  .unparsed button{
+    background:#fff;border-color:#e2b591;color:var(--warn);
+    padding:4px 10px;font-size:13px;border-radius:7px;flex:0 0 auto
+  }
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:7px 12px;border-radius:999px;border:1px solid var(--line);
+    background:#fffefb;font-size:14px;color:var(--muted);cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .chip.on{background:var(--accent-soft);border-color:var(--accent);color:#17564a;font-weight:600}
+  .chip .x{font-size:15px;line-height:1;opacity:.55}
+  .alarmRow{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center}
+  .alarmRow .lbl2{font-size:11.5px;color:var(--muted);letter-spacing:.04em;margin-right:2px}
+  .alarmRow .mini{
+    font-size:12.5px;padding:4px 9px;border-radius:999px;
+    border:1px solid var(--line);background:#fffefb;color:var(--muted);cursor:pointer;
+  }
+  .alarmRow .mini.on{background:var(--accent-soft);border-color:var(--accent);color:#17564a;font-weight:600}
+  .alarms{display:flex;flex-direction:column;gap:10px;margin-bottom:4px}
+
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  summary{font-weight:600;font-size:14.5px;cursor:pointer;color:var(--ink)}
+  details .body{padding-top:10px;color:var(--muted);font-size:13.5px}
+  details .body p{margin:0 0 9px}
+  details .body b{color:var(--ink);font-weight:600}
+  ol.steps{margin:0;padding-left:20px}
+  ol.steps li{margin:6px 0}
+  footer{color:var(--muted);font-size:12.5px;text-align:center;padding:20px 0 0;line-height:1.8}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);
+    background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;
+    font-size:14px;opacity:0;pointer-events:none;transition:all .22s ease;z-index:9;
+    max-width:90vw;text-align:center
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  @media (max-width:400px){
+    .meta{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <span class="brand-main">Rainy</span>
+      <span class="brand-x">×</span>
+      <span class="brand-cupl">CUPL</span>
+    </div>
+    <p class="eyebrow">本地运行 · 数据不出手机</p>
+    <h1>把群里的 DDL 变成日历提醒</h1>
+    <p class="lede">把散在聊天记录里的通知整段粘进来，它拆成一条条任务，你改一眼，导出一个日历文件导进手机日历。之后的日子交给系统日历自己响。</p>
+  </header>
+
+  <div class="card">
+    <h2>① 粘贴原文</h2>
+    <textarea id="input" placeholder="整段通知直接粘进来就行，也可以一行一条。比如：&#10;法理学论文初稿 11月20日 23:59 不少于3000字&#10;【社团】例会材料提交 11/18 20:00 PPT+预算&#10;刑法总论案例作业 本周五下午5点"></textarea>
+    <div class="row-btns">
+      <button class="primary" id="parse">解析</button>
+      <button class="ghost" id="pasteBtn">粘贴剪贴板</button>
+      <button class="ghost" id="demo">放个示例</button>
+      <button class="ghost" id="clear">清空</button>
+    </div>
+    <p class="hint">认不出日期的会被单独列出来，不会丢。日期按下面这个“今天”推算。</p>
+    <div class="row-btns" style="align-items:center;margin-top:6px">
+      <label style="font-size:13px;color:var(--muted)">按哪天算
+        <input type="date" id="baseDate" style="width:150px;display:inline-block;margin-left:6px;font-size:14px;padding:6px 8px">
+      </label>
+      <button class="ghost" id="resetBase" style="font-size:13px;padding:6px 12px">回到今天</button>
+    </div>
+  </div>
+
+  <div id="unparsedBox"></div>
+
+  <div class="card" id="listCard" style="display:none">
+    <h2>② 核对 · 共 <span class="count" id="count">0</span> 条</h2>
+    <div id="list"></div>
+    <div class="row-btns">
+      <button class="ghost" id="add">+ 手动加一条</button>
+    </div>
+  </div>
+
+  <div class="card" id="exportCard" style="display:none">
+    <h2>③ 提醒与导出</h2>
+    <p class="hint" style="margin:0 0 10px">点一下加减提前量。这里改的是<b>所有条目</b>的默认值，单条可以在卡片里单独改。</p>
+    <div class="chips" id="alarmChips"></div>
+    <div class="row-btns" style="margin-top:10px">
+      <input type="number" id="customVal" min="1" max="999" placeholder="数值" style="width:78px;flex:0 0 78px">
+      <select id="customUnit" style="flex:0 0 88px;font-family:inherit;font-size:15px;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fffefb">
+        <option value="60">小时前</option>
+        <option value="1440">天前</option>
+        <option value="1">分钟前</option>
+      </select>
+      <button class="ghost" id="addAlarm">+ 添加</button>
+    </div>
+    <label class="urgentOpt"><input type="checkbox" id="urgentMark" checked> 3 天内到期的，日历标题前加【急】</label>
+    <button class="primary big" id="export">加入我的日历</button>
+    <div class="row-btns" style="margin-top:8px">
+      <button class="ghost" id="copyText" style="flex:1">复制成文字发给别人</button>
+    </div>
+    <div class="row-btns" style="margin-top:8px">
+      <button class="ghost" id="previewBtn" style="flex:1">导出前预览</button>
+    </div>
+    <div class="preview" id="preview" style="display:none"></div>
+    <p class="hint" id="exportHint">手机上点「加入我的日历」会弹出系统面板，可以直接选「日历」。如果没弹出，会下载一个 .ics 文件，点开它选「添加到日历」。</p>
+  </div>
+
+  <details id="demoBox">
+    <summary>30 秒演示（先看再动手）</summary>
+    <div class="body">
+      <video id="demoVideo" src="demo.mp4" controls playsinline preload="metadata"
+        style="width:100%;border-radius:10px;background:#000;display:none"></video>
+      <p id="demoHow" style="margin-top:8px">演示视频还没放进来。</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>怎么把它弄进手机日历</summary>
+    <div class="body">
+      <p><b>iPhone：</b>下载后用「文件」打开 .ics → 右上角分享 → 可能要先「存储到文件」→ 在文件里点它 → 添加到日历。或者在微信里把 .ics 发给自己，点开选「用其他应用打开 → 日历」。</p>
+      <p><b>安卓：</b>下载后点开，系统会问用哪个日历应用打开，选系统日历 → 添加。没反应的话在「文件管理」里找到它再点。</p>
+      <p><b>电脑（Mac / Windows）：</b>双击 .ics，系统日历会问是否添加全部事件。</p>
+      <p>进来之后，<b>提醒时间、颜色、重复都可以在日历里自己改</b>，删一条、删一批也在日历里删，不用回来找这个页面。</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>它做什么、不做什么</summary>
+    <div class="body">
+      <p><b>做：</b>把一坨乱文本拆成带日期的任务，导成标准日历文件。仅此一件事，做到底。</p>
+      <p><b>不做：</b>不存你的任务、不需要注册、不需要激活码、没有服务器、不联网。关掉这个页面，什么都没留下 —— 所以导出前别关页面。</p>
+      <p><b>为什么不做别的：</b>存任务、按时提醒、多设备同步，你的系统日历已经在做，而且做得比任何小工具都稳。这里只补它缺的那一环：录入。</p>
+    </div>
+  </details>
+
+  <footer>
+    这个文件本身可以随便转发、随便保存，断网也能用。<br>
+    没有账号，没有后台，没有人在看你的 DDL。<br>
+    <span style="letter-spacing:.06em">Made by <b style="color:var(--ink)">Rainy</b> · <b style="color:var(--accent)">CUPL</b></span>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------- 基础工具 ---------------- */
+  function pad2(n){ return (n < 10 ? '0' : '') + n; }
+
+  function normalize(s){
+    return String(s)
+      .replace(/[！-～]/g, function(c){
+        return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+      })
+      .replace(/　/g, ' ')
+      .replace(/[，、]/g, ',')
+      .replace(/。/g, '.')
+      .replace(/[－—–]/g, '-');
+  }
+
+  var CN = {零:0,一:1,二:2,两:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9};
+  function cnToNum(s){
+    if (!s) return NaN;
+    if (s === '十') return 10;
+    if (s.length === 1) return (s in CN) ? CN[s] : NaN;
+    if (s.charAt(0) === '十') return 10 + (CN[s.charAt(1)] || 0);
+    if (s.charAt(1) === '十') {
+      var tail = s.charAt(2);
+      return (CN[s.charAt(0)] || 0) * 10 + (tail ? (CN[tail] || 0) : 0);
+    }
+    return NaN;
+  }
+
+  function toDigits(s){
+    var DIG = {'〇':'0','零':'0','一':'1','二':'2','三':'3','四':'4','五':'5','六':'6','七':'7','八':'8','九':'9'};
+    return String(s)
+      // 年份逐字：二〇二六年 → 2026年
+      .replace(/[〇零一二三四五六七八九]{4}(?=\s*年)/g, function(m){
+        return m.split('').map(function(c){ return DIG[c]; }).join('');
+      })
+      // 廿/卅：廿五 → 二十五
+      .replace(/廿/g, '二十').replace(/卅/g, '三十')
+      // 月、日、号、点、时、分、周 前面的中文数字
+      .replace(/[零一二三四五六七八九十两]{1,3}(?=\s*(?:月|日|号|点|时|分|周))/g, function(m){
+        var n = cnToNum(m);
+        return isNaN(n) ? m : String(n);
+      })
+      // “至二十四日”这类：数字后接日号但前面是范围连接词，上一步已覆盖；这里补“点半”前的数字
+      .replace(/[零一二三四五六七八九十两]{1,3}(?=\s*点半)/g, function(m){
+        var n = cnToNum(m);
+        return isNaN(n) ? m : String(n);
+      });
+  }
+
+  // 日期区间：11.17-11.24 / 11月17日至24日 / 11月17日到11月24日 / 11/17-11/24 / 11月17日—24日
+  // 返回 {start:{y,m,d}, end:{y,m,d}, raw}；结束日期早于开始时视为跨年
+  function findDateRange(text, today){
+    var SEP = '\\s*(?:-|~|～|至|到|—|–)\\s*';
+    var res = [
+      // 11月17日 至 11月24日 / 11月17日至24日
+      new RegExp('(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*[日号]?' + SEP + '(?:(\\d{1,2})\\s*月\\s*)?(\\d{1,2})\\s*[日号]'),
+      // 11.17-11.24 / 11/17-11/24
+      new RegExp('(?<![.\\d])(\\d{1,2})[./](\\d{1,2})' + SEP + '(?:(\\d{1,2})[./])?(\\d{1,2})(?![\\d.:])')
+    ];
+    for (var i = 0; i < res.length; i++) {
+      var m = text.match(res[i]);
+      if (!m) continue;
+      var sm = +m[1], sd = +m[2];
+      var em = m[3] ? +m[3] : sm, ed = +m[4];
+      if (sm < 1 || sm > 12 || em < 1 || em > 12) continue;
+      var sy = inferYear(sm, sd, today);
+      if (!makeDate(sy, sm, sd)) continue;
+      var ey = sy;
+      if (em < sm || (em === sm && ed < sd)) ey = sy + 1;
+      if (!makeDate(ey, em, ed)) continue;
+      if (ey === sy && em === sm && ed === sd) continue;
+      return {start: {y: sy, m: sm, d: sd}, end: {y: ey, m: em, d: ed}, raw: m[0]};
+    }
+    return null;
+  }
+
+  function makeDate(y, m, d){
+    var dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    return dt;
+  }
+
+  function addDays(base, n){
+    var d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
+    d.setDate(d.getDate() + n);
+    return d;
+  }
+
+  function inferYear(m, d, today){
+    var same = makeDate(today.getFullYear(), m, d);
+    if (!same) return today.getFullYear();
+    var diffDays = (same - today) / 86400000;
+    if (diffDays < -45) return today.getFullYear() + 1;
+    return today.getFullYear();
+  }
+
+  /* ---------------- 找日期 ---------------- */
+  function findDate(text, today){
+    var m;
+
+    // 区间优先：返回开始日期，同时带上 rangeEnd（YYYY-MM-DD）
+    var rg = findDateRange(text, today);
+    if (rg) {
+      return {y: rg.start.y, m: rg.start.m, d: rg.start.d, raw: rg.raw, conf: 'range',
+        rangeEnd: rg.end.y + '-' + pad2(rg.end.m) + '-' + pad2(rg.end.d)};
+    }
+
+    m = text.match(/(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})\s*[日号]?/);
+    if (m) {
+      var y1 = +m[1], m1 = +m[2], d1 = +m[3];
+      if (makeDate(y1, m1, d1)) return {y:y1, m:m1, d:d1, raw:m[0], conf:'full'};
+      return {invalid:true, raw:m[0]};
+    }
+
+    m = text.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/);
+    if (m) {
+      var m2 = +m[1], d2 = +m[2];
+      var y2 = inferYear(m2, d2, today);
+      if (makeDate(y2, m2, d2)) return {y:y2, m:m2, d:d2, raw:m[0], conf:'month'};
+      // 写了月日但日子不存在（如 2月30日）：明确判为无效，不要退到“只看日”的规则里去猜
+      return {invalid:true, raw:m[0]};
+    }
+
+    m = text.match(/(大后天|后天|明天|今天|明晚|今晚)/);
+    if (m) {
+      var off = {'今天':0,'今晚':0,'明天':1,'明晚':1,'后天':2,'大后天':3}[m[1]];
+      var base = addDays(today, off);
+      return {y:base.getFullYear(), m:base.getMonth()+1, d:base.getDate(), raw:m[0], conf:'rel'};
+    }
+
+    m = text.match(/((?:下+|本|这|上)?)\s*(?:周|星期|礼拜)\s*([一二三四五六日天])/);
+    if (m) {
+      var dowMap = {'一':0,'二':1,'三':2,'四':3,'五':4,'六':5,'日':6,'天':6};
+      var target = dowMap[m[2]];
+      var dowToday = (today.getDay() + 6) % 7;
+      var prefix = m[1] || '';
+      var weeks = (prefix.match(/下/g) || []).length;
+      var delta;
+      if (weeks === 0) delta = (target - dowToday + 7) % 7;   // 本/这/上周或缺省：本周内最近的该天
+      else if (weeks === 1) delta = (7 - dowToday) + target;
+      else delta = (14 - dowToday) + target;
+      var wd = addDays(today, delta);
+      return {y:wd.getFullYear(), m:wd.getMonth()+1, d:wd.getDate(), raw:m[0], conf:'week'};
+    }
+
+    m = text.match(/(\d{1,2})\s*[-\/]\s*(\d{1,2})(?!\d)/);
+    if (m) {
+      var m3 = +m[1], d3 = +m[2];
+      var y3 = inferYear(m3, d3, today);
+      if (makeDate(y3, m3, d3)) return {y:y3, m:m3, d:d3, raw:m[0], conf:'slash'};
+      if (m3 >= 1 && m3 <= 12) return {invalid:true, raw:m[0]};
+    }
+
+    // 点分月日：12.18 / 11.25
+    m = text.match(/(?<![.\d])(\d{1,2})\.(\d{1,2})(?!\s*[-–]\s*\d{1,2}\.\d{1,2})(?!\d)/);
+    if (m) {
+      var mp = +m[1], dp = +m[2];
+      if (mp >= 1 && mp <= 12 && dp >= 1 && dp <= 31) {
+        var yp = inferYear(mp, dp, today);
+        if (makeDate(yp, mp, dp)) return {y:yp, m:mp, d:dp, raw:m[0], conf:'dot'};
+      }
+    }
+
+    m = text.match(/(\d{1,2})\s*[日号]/);
+    if (m) {
+      var d4 = +m[1];
+      var y4 = today.getFullYear(), m4 = today.getMonth() + 1;
+      if (d4 < today.getDate() - 3) {
+        m4 += 1;
+        if (m4 > 12) { m4 = 1; y4 += 1; }
+      }
+      if (makeDate(y4, m4, d4)) return {y:y4, m:m4, d:d4, raw:m[0], conf:'day'};
+    }
+
+    return null;
+  }
+
+  /* ---------------- 找时间 ---------------- */
+  function findTime(text){
+    var periodMatch = text.match(/(凌晨|早上|早晨|上午|中午|下午|傍晚|晚上|夜里|晚)/);
+    var period = periodMatch ? periodMatch[0] : null;
+    var strips = periodMatch ? [periodMatch[0]] : [];
+
+    var h = null, mi = 0, m;
+    m = text.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+    if (m) {
+      h = +m[1]; mi = +m[2]; strips.push(m[0]);
+    } else {
+      m = text.match(/(\d{1,2})\s*[点时]\s*(半|\d{1,2}\s*分?)?/);
+      if (m) {
+        h = +m[1];
+        if (m[2] === '半') mi = 30;
+        else if (m[2]) mi = parseInt(m[2].replace(/\D/g, ''), 10) || 0;
+        strips.push(m[0]);
+      }
+    }
+
+    if (h === null) {
+      if (!period) return null;
+      var fallback = {'凌晨':1,'早上':8,'早晨':8,'上午':9,'中午':12,'下午':15,'傍晚':18,'晚上':20,'夜里':21,'晚':20}[period];
+      return {h:fallback, min:0, strips:strips};
+    }
+
+    if (period) {
+      if (/^(下午|晚上|傍晚|夜里|晚)$/.test(period) && h < 12) h += 12;
+      else if (period === '中午' && h < 11) h += 12;
+      else if (/^(凌晨|早上|早晨|上午)$/.test(period) && h === 12) h = 0;
+    }
+
+    if (h > 23) h = 23;
+    if (mi > 59) mi = 59;
+    return {h:h, min:mi, strips:strips};
+  }
+
+  /* ---------------- 解析一行 ---------------- */
+  // 只清掉行首用于强调的符号（❗️ ⚠️ 子弹符等），不改后续内容
+  function cleanLinePrefix(raw){
+    return String(raw).replace(/^[\s❗‼⁉⚠★●◆»️]+/, '').trim();
+  }
+
+  // 一行是否是"节标题"（短、以冒号结尾、无实质内容）
+  function isSectionHeader(text){
+    return /^[^：:]{0,15}[：:]$/.test(text.trim());
+  }
+
+  function parseLine(rawLine, today){
+    var cleaned = cleanLinePrefix(rawLine);
+    var text = normalize(cleaned).trim();
+    if (!text) return null;
+
+    // 节标题行（内容短、以冒号结尾、无其他内容）→ 跳过
+    if (/^[^：:]{0,15}[：:]$/.test(text)) return null;
+
+    text = toDigits(text);
+
+    var d = findDate(text, today);
+    var t = findTime(text);
+
+    var title = text;
+    var strips = [];
+    if (d) strips.push(d.raw);
+    if (t) strips = strips.concat(t.strips);
+    for (var i = 0; i < strips.length; i++) {
+      if (strips[i]) title = title.replace(strips[i], ' ');
+    }
+
+    // 去掉日期被剥离后残留的"相对日期词"和空括号
+    title = title
+      .replace(/(?:大后天|后天|明天|今天|明晚|今晚)/g, '')
+      .replace(/((?:下+|本|这|上)?)\s*(?:周|星期|礼拜)\s*[一二三四五六日天]/g, '')
+      .replace(/[（(]\s*[）)]/g, '');
+
+    var source = '';
+    var sm = title.match(/[【\[]([^】\]]{1,14})[】\]]/);
+    if (sm) {
+      source = sm[1].trim();
+      title = title.replace(sm[0], ' ');
+    }
+
+    // 括号里只有省略号的"副标题"（如"（中国式现代化…）"）→ 去掉
+    title = title.replace(/[（(][^）)]{0,20}[…\.]{1,3}[^）)]{0,10}[）)]/g, '');
+    // 括号里原本是"日期/考试说明"，日期被剥走后只剩说明（如"(线上考试 )"）→ 去掉
+    title = title.replace(/[（(]\s*(线上考试|考试|网络考试|线上|网课|考查|考核|期末)?\s*[）)]/g, '');
+    // 括号没有闭合且内容在末尾（"（线上考试" 行末截断）→ 去掉
+    title = title.replace(/\s*[（(][^）)]{0,20}\s*$/, '');
+
+    title = title
+      .replace(/\s+/g, ' ')
+      .replace(/^[\s\-·,.:;!?()（）]+/, '')
+      .replace(/[\s\-·,.:;!?()（）]+$/, '');
+
+    // 去掉时间和日期后面残留的连接词：如 "23:59 前提交" 里的"前提交"
+    title = title
+      .replace(/^(截止日期|截至日期|截止时间|日期|时间)\s*[:：]?\s*/i, '')
+      .replace(/^(截止|截至|due|deadline|ddl)\s*[:：]?\s*/i, '')
+      .trim();
+
+    // 日期被剥掉后，开头残留的“前/之前”（“廿五日前交表”→“前交表”）
+    title = title.replace(/^\s*(之前|以前|前)\s*/, '');
+    // 句末孤零零的“交/提交”（“逻导 11.22 交”→“逻导 交”）
+    title = title.replace(/\s+(交|提交|上交)$/, '');
+
+    title = title
+      .replace(/\s*(之前|以前)\s*(提交|上交|交|完成)?$/, '')
+      .replace(/\s*前\s*(提交|上交|交|完成)$/, '')
+      .replace(/\s*(截止|截至|due|deadline|ddl)$/i, '')
+      .replace(/^[\s\-·,.:;!?()（）]+/, '')
+      .replace(/[\s\-·,.:;!?()（）]+$/, '')
+      .trim();
+
+    if (!title) title = d ? '未命名任务' : text.slice(0, 40);
+
+    return {
+      title: title,
+      date: d && !d.invalid ? (d.y + '-' + pad2(d.m) + '-' + pad2(d.d)) : '',
+      time: t ? (pad2(t.h) + ':' + pad2(t.min)) : '23:59',
+      source: source,
+      notes: [],
+      rangeEnd: d && d.rangeEnd ? d.rangeEnd : '',
+      hadDate: !!(d && !d.invalid),
+      badDate: d && d.invalid ? d.raw : ''
+    };
+  }
+
+  /* ---------------- 段落切分：应对“通知体”整段文字 ---------------- */
+  var VERBS = /(撰写|编写|提交|上交|交到|交|发送|发出|发到|发|完成|录入|填报|填写|报名|上传|下载|打印|准备|组织|召开|开展|参加|参与|回复|汇总|整理|报送|领取|签字|确认)/;
+
+  // 去掉链接、邮箱、@全体、呼叫语这类对日期无意义的噪音
+  function stripNoise(s){
+    return s
+      .replace(/https?:\/\/[A-Za-z0-9\-._~:\/?#@!$&*+=%]+/g, ' ')
+      .replace(/[\w.+-]+@[\w.-]+\.\w+/g, ' ')
+      .replace(/@所有人|@全体成员|@全体/g, ' ')
+      .replace(/\[[A-Za-z]{2,12}\]/g, ' ')
+      .replace(/【\s*】/g, ' ')
+      .replace(/\([^)]{0,20}\)(?=\s|$)/g, ' ');
+  }
+
+  // 把一段话切成"含日期的动作段"
+  // 注意：原文用来提炼标题和备注（保留邮箱/链接），去噪版只用来找日期
+  function segmentNotice(text, today){
+    var found = [];
+    var leftovers = [];
+
+    var sentences = text.split(/[。！!？?；;\n]+/);
+
+    for (var si = 0; si < sentences.length; si++) {
+      var sent = sentences[si].trim();
+      if (!sent) continue;
+
+      if (!findDate(stripNoise(normalize(sent)), today)) { leftovers.push(sent); continue; }
+
+      // 原文常缺句号，用这些词当硬边界
+      sent = sent.replace(/(本次活动|本通知|注意事项|另需|另附|如有(?:意向|获评|疑问|问题))/g, '。$1');
+      var subs = sent.split('。').filter(function(x){ return x.trim(); });
+
+      for (var ui = 0; ui < subs.length; ui++) {
+        var sub = subs[ui].trim();
+        if (!sub) continue;
+
+        // 去噪版用于判断这个小段有没有日期
+        if (!findDate(stripNoise(normalize(sub)), today)) { leftovers.push(sub); continue; }
+
+        var clauses = sub.split(/[,，]+/);
+        var pending = null;
+
+        for (var ci = 0; ci < clauses.length; ci++) {
+          var cl = clauses[ci].trim();
+          if (!cl) continue;
+
+          var probe = stripNoise(normalize(cl));
+          var d = findDate(probe, today);
+
+          if (d && !d.invalid) {
+            if (pending) found.push(pending);
+            pending = {clause: cl, date: d, extra: [], notes: extractNotes(cl)};
+          } else if (pending) {
+            if (d && d.invalid) {
+              found.push(pending);
+              pending = null;
+              found.push({clause: cl, date: d, extra: [], notes: extractNotes(cl)});
+            } else if (/^(并|并同时|并且|同时|还需|还须|另需)/.test(cl)) {
+              pending.extra.push(cl);
+              extractNotes(cl).forEach(function(n){ if (pending.notes.indexOf(n) === -1) pending.notes.push(n); });
+            }
+          }
+        }
+        if (pending) found.push(pending);
+      }
+    }
+
+    return {dated: found, leftovers: leftovers};
+  }
+
+  // 区间（11.17-11.24）拆成两张卡：「开始」那天提醒你可以动手，「截止」那天是真正的 DDL
+  // 两张都进日历、都设提醒；标题加前缀方便在日历里一眼区分
+  function expandRanges(list){
+    var out = [];
+    list.forEach(function(it){
+      if (!it.rangeEnd || !it.date) { out.push(it); return; }
+      var base = (it.title || '').replace(/^(开始|截止)·/, '');
+      var start = {};
+      for (var k in it) start[k] = it[k];
+      var endItem = {};
+      for (var k2 in it) endItem[k2] = it[k2];
+
+      var ep = it.rangeEnd.split('-');
+      var sp = it.date.split('-');
+      var span = (+sp[1]) + '/' + (+sp[2]) + '–' + (+ep[1]) + '/' + (+ep[2]);
+
+      start.title = '开始·' + base;
+      start.kind = 'deadline';
+      start.time = (it.time && it.time !== '23:59') ? it.time : '09:00';
+      start.endTime = '';
+      start.notes = ['时间段 ' + span].concat((it.notes || []).filter(function(n){ return !/^时间段 /.test(n); }));
+      start.rangeEnd = '';
+      start.rangeRole = 'start';
+
+      endItem.title = '截止·' + base;
+      endItem.kind = 'deadline';
+      endItem.date = it.rangeEnd;
+      endItem.time = '23:59';
+      endItem.endTime = '';
+      endItem.location = it.location || '';
+      endItem.notes = ['时间段 ' + span].concat((it.notes || []).filter(function(n){ return !/^时间段 /.test(n); }));
+      endItem.rangeEnd = '';
+      endItem.rangeRole = 'end';
+
+      out.push(start, endItem);
+    });
+    return out;
+  }
+
+  // 把一个切分段变成列表条目：标题用去噪文本提炼，邮箱/链接进备注
+  function noticeItem(f, contextMsg){
+    var probe = stripNoise(normalize(f.clause));
+    var title = cleanTitle(probe, f.date.raw);
+    if (f.extra && f.extra.length) {
+      var more = f.extra.map(function(x){ return cleanTitle(stripNoise(normalize(x)), null); })
+        .filter(function(x){ return x && x.length >= 2; });
+      if (more.length) title = title + '，' + more.join('，');
+    }
+
+    // 小段里没活动名（如只剩"下午2点半"），就借用整条消息的标题，再加阶段前缀
+    var meaningless = !title || title.length < 3 || /^[\d:：.,，~\-点分半上下晚早中小时分钟]+$/.test(title) ||
+      /^(下午|上午|中午|晚上)?\d/.test(title);
+    if (contextMsg) {
+      var ctxTitle = eventTitle(contextMsg);
+      // 太短的残句（"报名表"/"材料"）也补上活动名，否则导出后看不出是哪件事
+      var tooVague = title && title.length <= 6 && !/·/.test(title) && ctxTitle &&
+        ctxTitle.length >= 4 && title.indexOf(ctxTitle) === -1 && ctxTitle.indexOf(title) === -1;
+      if ((meaningless || tooVague) && ctxTitle && ctxTitle.length >= 3) {
+        var stage = (toDigits(stripNoise(normalize(f.clause))).match(/(初赛|复赛|决赛|预赛|半决赛)/) || [])[1];
+        var pre = (stage && ctxTitle.indexOf(stage) === -1 ? stage + '·' : '') + ctxTitle;
+        title = meaningless ? pre : (pre + '·' + title);
+      }
+    }
+
+    var t = findTime(probe);
+    return {
+      kind: 'deadline',
+      title: title || '未命名任务',
+      date: f.date.y + '-' + pad2(f.date.m) + '-' + pad2(f.date.d),
+      time: t ? (pad2(t.h) + ':' + pad2(t.min)) : '23:59',
+      source: '',
+      notes: (f.notes || []).slice(),
+      raw: f.clause.replace(/\s+/g, ' ').slice(0, 90),
+      rangeEnd: f.date.rangeEnd || '',
+      hadDate: true,
+      badDate: ''
+    };
+  }
+
+  /* ---------------- 活动类通知：时间 / 地点 / 事件 / 要点 ---------------- */
+  var KIND_WORDS = '训练营|培训会|培训|讲座|课程|班会|例会|会议|团日活动|宣讲会|分享会|座谈会|交流会|比赛|考试|沙龙|晚会|活动';
+  var KIND_RE = new RegExp('(' + KIND_WORDS + ')');
+  var PLACE_HINT = /(\d|楼|室|教|厅|馆|场|中心|堂|端|门|广场|会议|报告|礼堂|食堂|校区|图书|学院)/;
+  var PLACE_STOP = '\\s,，.。;；!！~～|｜()（）"“”\\uD800-\\uDFFF';
+  var POINT_KEYS = ['二课', '学时', '报名', '请假', '阅读', '资料', '合影', '签到', '着装', '携带', '对象', '内容', '注意'];
+  var POINT_RE = /(二课|学时|时长|报名|请假|提前|阅读|资料|携带|带上|带好|合影|签到|着装|对象|内容|注意|务必|必须|自愿|入党)/;
+  // “X月X日前……”这种句子会单独成一张截止卡，不要再塞进别的卡的要点里
+  var DEADLINE_SENT = /\d{1,2}\s*月\s*\d{1,2}\s*[日号]?\s*[】\]]?\s*(前|之前|以前|截止|截至)/;
+
+  function stripEmoji(s){
+    return String(s)
+      .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ' ')
+      .replace(/[⌀-⏿☀-➿⬀-⯿️‍]/g, ' ');
+  }
+
+  // 微信里连着复制的多条消息：按空行、@所有人、📢、行内长空白、以及“关于…的通知”这类标题行切开
+  var MSG_START = /^(关于|【|📢|各(?:位|团|班|年|学院)|通知[:：]|温馨提示|重要通知|转(?:发)?通知)/;
+
+  function splitMessages(raw){
+    var s = String(raw).replace(/\r\n?/g, '\n');
+
+    // 1) 行内长空白 → 换行（微信里连着复制时消息之间常是一大串空格）
+    s = s.replace(/(\S)[ \t　]{6,}(?=\S)/g, '$1\n\u0001');
+    // 2) @所有人 / 📢 本身是消息起点
+    s = s.replace(/@所有人|@全体成员/g, '\u0001');
+    s = s.replace(/📢/g, '\u0001');
+
+    // 3) 空行是弱边界：空行后若像"新消息开头"才切，否则并回上一条
+    var chunks = s.split(/\n[ \t　]*\n+/);
+    if (chunks.length > 1) {
+      var rebuilt = [chunks[0]];
+      for (var c = 1; c < chunks.length; c++) {
+        var ch = chunks[c];
+        var body = ch.replace(/\s/g, '');
+        var head = ch.trim();
+        var looksNew = MSG_START.test(head) || /^\d{2}级/.test(head);
+        // 只有像“新通知开头”才切。正文里的“一、参加人员”这类小标题不能切，否则一条通知会被劈成两半
+        if (looksNew && body.length > 8) {
+          rebuilt.push('\u0001' + ch);
+        } else {
+          rebuilt[rebuilt.length - 1] += '\n' + ch;
+        }
+      }
+      s = rebuilt.join('\n');
+    }
+
+    // 4) 行首的“关于…的通知”“【…】”“各位…”多半是新消息
+    var lines = s.split('\n');
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i];
+      if (i > 0 && MSG_START.test(ln.trim()) && ln.trim().length > 3) {
+        out.push('\u0001');
+      }
+      out.push(ln);
+    }
+    s = out.join('\n');
+
+    var blocks = s.split('\u0001').map(function(x){ return x.trim(); }).filter(Boolean);
+
+    // 短碎片（标题行/称呼行）并回后一条：约 2 字以内且没日期
+    var mergedBlocks = [];
+    for (var k = 0; k < blocks.length; k++) {
+      var b = blocks[k];
+      var noDate = !findDate(toDigits(stripNoise(normalize(stripEmoji(b)))), new Date());
+      var isFragment = noDate && b.replace(/\s/g, '').length < 30;
+      if (isFragment && k + 1 < blocks.length) {
+        blocks[k + 1] = b + '\n' + blocks[k + 1];
+        continue;
+      }
+      mergedBlocks.push(b);
+    }
+
+    return mergedBlocks;
+  }
+
+  // 一条消息里可能有好几个日期（初赛/决赛/报名截止）：切成"每个日期一段"
+  // 但时间/地点常常单独成行（"地点：逸夫楼"），必须按整条消息取，不能只取带日期那句
+  function dateUnits(msg){
+    var whole = String(msg);
+    var wholeProbe = toDigits(stripNoise(normalize(stripEmoji(whole))));
+    var distinct = {};
+    (wholeProbe.match(/(?:\d{4}\s*[-\/.年]\s*)?\d{1,2}\s*月\s*\d{1,2}\s*[日号]?|\d{1,2}\s*[-\/]\s*\d{1,2}(?!\d)/g) || [])
+      .forEach(function(x){ distinct[x.replace(/\s/g, '')] = 1; });
+
+    var parts = whole.split(/[。！!？?\n]+/);
+    var units = [];
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i].trim();
+      if (!p) continue;
+      var probe = toDigits(stripNoise(normalize(stripEmoji(p))));
+      var first = findDate(probe, new Date());
+      if (!first || first.invalid) continue;
+
+      var groups = p.split(/[,，]+/);
+      var datedGroups = groups.filter(function(g){
+        var d = findDate(toDigits(stripNoise(normalize(stripEmoji(g)))), new Date());
+        return d && !d.invalid;
+      });
+      if (datedGroups.length <= 1) { units.push(p); continue; }
+
+      var buf = [];
+      for (var j = 0; j < groups.length; j++) {
+        var g = groups[j];
+        var gd = findDate(toDigits(stripNoise(normalize(stripEmoji(g)))), new Date());
+        if (gd && !gd.invalid) {
+          if (buf.length) units.push(buf.join('，'));
+          buf = [g];
+        } else if (buf.length) {
+          buf.push(g);
+        }
+      }
+      if (buf.length) units.push(buf.join('，'));
+    }
+    return units;
+  }
+
+  function findPlace(msg){
+    var t = normalize(msg);
+
+    // 1) 显式标签：地点：xxx / 📍xxx
+    var m = t.match(new RegExp('地点\\s*[:：]?\\s*(?:为|是|在)?\\s*([^' + PLACE_STOP + ']{2,20})'));
+    if (!m) m = t.match(new RegExp('\\uD83D\\uDCCD\\s*(?:地点\\s*[:：]?\\s*)?([^' + PLACE_STOP + ']{2,20})'));
+    if (m) return tidyPlace(m[1]);
+
+    // 2) 法大常见地点（没有“地点：”标签时也能认）
+    // 这些是法大本校地名，认出来就直接算地点（“阶三”“学活”没有“楼/室”字样也要认）
+    var patterns = [
+      /(?:环)?阶(?:梯)?(?:教室)?[一二三四五六七八九十\d]{1,2}/,
+      /(?:端|厚|明|致)(?:升)?\s*\d{2,4}(?![\d级年届号月日])/,
+      /逸夫楼[^\s，。；、）)]{0,14}/,
+      /(?:学生活动中心|学活|勤助)[^\s，。；、）)]{0,10}/,
+      /[^\s，。；、）)]{0,8}(?:报告厅|会议室|图书馆|体育馆|礼堂|操场)/
+    ];
+    for (var i = 0; i < patterns.length; i++) {
+      var pm = t.match(patterns[i]);
+      if (pm) {
+        var cand = tidyPlace(pm[0]);
+        if (cand && cand.length >= 2) return cand;
+      }
+    }
+
+    // 3) “在xxx开展/举行”
+    var m3 = t.match(new RegExp('在\\s*([^' + PLACE_STOP + ']{2,10}?)\\s*(?:开展|举行|召开|进行|举办|上课|集合|开会)'));
+    if (m3 && PLACE_HINT.test(m3[1])) return tidyPlace(m3[1]);
+
+    return '';
+  }
+
+  function tidyPlace(s){
+    return String(s)
+      .replace(/^(地点|位置)\s*[:：]?\s*/, '')
+      .replace(/(开展|举行|召开|进行|举办|集合|上课|开会)$/, '')
+      .replace(/[，,。.；;：:、]+$/, '')
+      .trim();
+  }
+
+  function applyPeriod(h, period){
+    if (!period) return h;
+    if (/(下午|晚上|傍晚|夜里)/.test(period) && h < 12) return h + 12;
+    if (period === '中午' && h < 11) return h + 12;
+    if (/(凌晨|早上|早晨|上午)/.test(period) && h === 12) return 0;
+    return h;
+  }
+
+  function pointMin(x){
+    if (!x) return 0;
+    if (x === '半') return 30;
+    return parseInt(String(x).replace(/\D/g, ''), 10) || 0;
+  }
+
+  // 在日期后面一小段里找“开始-结束”时间
+  function findTimeRange(win, periodHint){
+    var pm = win.match(/(凌晨|早上|早晨|上午|中午|下午|傍晚|晚上|夜里)/);
+    var period = pm ? pm[0] : (periodHint || '');
+    var sh, sm, eh = null, em = 0, m;
+    if ((m = win.match(/(\d{1,2})[:.](\d{2})\s*(?:-|~|到|至)\s*(\d{1,2})[:.](\d{2})/))) {
+      sh = +m[1]; sm = +m[2]; eh = +m[3]; em = +m[4];
+    } else if ((m = win.match(/(\d{1,2})\s*[点时](半|\d{1,2}\s*分)?\s*(?:-|~|到|至)\s*(\d{1,2})\s*[点时](半|\d{1,2}\s*分)?/))) {
+      sh = +m[1]; sm = pointMin(m[2]); eh = +m[3]; em = pointMin(m[4]);
+    } else if ((m = win.match(/(\d{1,2}):(\d{2})/))) {
+      sh = +m[1]; sm = +m[2];
+    } else if ((m = win.match(/(\d{1,2})\s*[点时](半|\d{1,2}\s*分)?/))) {
+      sh = +m[1]; sm = pointMin(m[2]);
+    } else {
+      return null;
+    }
+    if (sh > 23 || sm > 59) return null;
+    sh = applyPeriod(sh, period);
+    if (eh !== null) {
+      eh = applyPeriod(eh, period);
+      if (eh * 60 + em <= sh * 60 + sm && eh < 12) eh += 12;
+      if (eh > 23 || em > 59 || eh * 60 + em <= sh * 60 + sm) eh = null;
+    }
+    return {sh: sh, sm: sm, eh: eh, em: em};
+  }
+
+  function hm(h, m){ return pad2(h) + ':' + pad2(m); }
+
+  function eventTitle(msg){
+    var nm = normalize(stripEmoji(msg)).replace(/\[[A-Za-z]{2,12}\]/g, ' ');
+
+    // 字段行和“可获二课/报名”这类要点句都不是活动名
+    var bodyLines = nm.split('\n').filter(function(l){
+      var s = l.trim();
+      if (!s) return false;
+      if (/^(时间|地点|内容|培训内容|活动内容|参与对象|对象|主题|主讲|主办|承办|要求|注意|报名)\s*[:：]/.test(s)) return false;
+      if (POINT_RE.test(s) && !KIND_RE.test(s)) return false;
+      return true;
+    });
+
+    // 整个标题里也不要出现地点片段（“学生活动中心”会把“学生活动”当活动名）
+    var noPlace = bodyLines.join('\n')
+      .replace(/(地点|📍)[^。\n]*/g, ' ')
+      .replace(/[^。\n]{0,6}(活动中心|报告厅|教室|会议室|阶梯教室|礼堂|广场)/g, ' ');
+    noPlace = stripEmoji(noPlace);
+
+    // 1) 【…】标题块
+    var b = nm.match(/【([^】]{2,20})】/);
+    if (b && /(通知|活动|会|课|培训|讲座|训练营|比赛|竞赛)/.test(b[1])) {
+      var t1 = b[1].replace(/(的)?通知$/, '').trim();
+      // 【通知】这种纯标签没有信息量，继续往下找真标题
+      if (/^(通知|公告|重要通知|温馨提示)$/.test(t1)) { t1 = ''; }
+      if (t1) {
+        var q1 = nm.match(/[“"「『]([^”"」』\n]{2,16})[”"」』]/);
+        if (q1 && t1.indexOf(q1[1]) === -1 && t1.length + q1[1].length <= 24) t1 += '：' + q1[1];
+        return t1.replace(/,/g, '，').replace(/\s+/g, '').trim();
+      }
+    }
+
+    // 2) 书名号/引号里的专名
+    var q = noPlace.match(/[“"「『]([^”"」』\n]{2,16})[”"」』]/);
+    if (q) {
+      var rest = noPlace.slice(noPlace.indexOf(q[0]) + q[0].length);
+      var km = rest.match(new RegExp('^[^\\s,.:;!~]{0,10}?(' + KIND_WORDS + ')'));
+      var t2 = q[1] + (km ? km[0] : '');
+      if (t2.length >= 3) return t2.replace(/\s+/g, '').trim();
+    }
+
+    // 3) “XX训练营/XX讲座”这类复合名（取有实义前缀的，跳过纯字段词）
+    var km2 = noPlace.match(new RegExp('([\\u4e00-\\u9fa5]{1,8})(' + KIND_WORDS + ')'));
+    if (km2) {
+      var prefix = km2[1].replace(/^(参与|参加|本次|此次|这次|本|将|于|开展|举行|组织|内容|相关|可获|获得)+/g, '');
+      if (prefix.length >= 2 && !/^(参与|参加)/.test(prefix)) {
+        return (prefix + km2[2]).replace(/\s+/g, '').trim();
+      }
+    }
+
+    // 4) 兜底：第一个像标题的行；“关于举办X的通知”→只留 X
+    var firsts = bodyLines.map(function(l){ return l.trim(); })
+      .filter(function(l){ return l.length >= 2 && !/^[\d\s:：.,，%~-]+$/.test(l); });
+    var fb = (firsts[0] || '').slice(0, 30);
+    var about = fb.match(/^关于(?:参加|举办|开展|组织|召开|举行)?(.+?)(?:的)?通知$/);
+    if (about) fb = about[1];
+    // 取引号里的专名
+    var inner = fb.match(/[“"「『]([^”"」』]{2,20})[”"」』]/);
+    if (inner) fb = inner[1];
+    fb = fb.replace(/[“"「『」』]/g, '').replace(/^[\s:：、,，]+/, '').trim();
+    return fb.replace(/\s+/g, '').trim();
+  }
+
+  // 要点去重：按字面相似度判断（两条说的是同一件事才去掉）
+  function bigrams(s){
+    var t = String(s).replace(/[\s，,。.、：:；;！!？?（）()]/g, '');
+    var set = {};
+    for (var i = 0; i < t.length - 1; i++) set[t.substr(i, 2)] = 1;
+    return set;
+  }
+  function similarPoint(a, b){
+    if (a.indexOf(b) > -1 || b.indexOf(a) > -1) return true;
+    var A = bigrams(a), B = bigrams(b);
+    var ka = Object.keys(A), kb = Object.keys(B);
+    if (!ka.length || !kb.length) return false;
+    var common = ka.filter(function(k){ return B[k]; }).length;
+    return common / Math.min(ka.length, kb.length) >= 0.45;
+  }
+  function addPoint(list, p){
+    if (!p) return;
+    for (var i = 0; i < list.length; i++) if (similarPoint(list[i], p)) return;
+    list.push(p);
+  }
+
+  function eventPoints(msg){
+    // 保留中文标点（顿号等），只按句子和逗号切，挑出含关键词的小句
+    var nm = stripEmoji(msg)
+      .replace(/\[[A-Za-z]{2,12}\]/g, ' ')
+      .replace(/https?:\/\/[A-Za-z0-9\-._~:\/?#@!$&*+=%]+/g, ' ')
+      .replace(/[\w.+-]+@[\w.-]+\.\w+/g, ' ');
+    // 先按整句切（保留句内逗号，避免“签到表，标注请假人员”被拆碎）；句子太长才退到小句
+    var sents = nm.split(/[\n。！!～~；;？?｜|]+/);
+    var out = [];
+    for (var i = 0; i < sents.length && out.length < 5; i++) {
+      var s = sents[i].replace(/\s+/g, ' ').trim();
+      if (!s) continue;
+      if (/^(时间|地点)/.test(s)) continue;
+      if (DEADLINE_SENT.test(normalize(s))) continue;
+      if (!POINT_RE.test(s)) continue;
+      var pieces = s.length > 40
+        ? s.split(/[，,]+/).filter(function(c){ return POINT_RE.test(c); })
+        : [s];
+      for (var j = 0; j < pieces.length; j++) {
+        var f = pieces[j].replace(/不要错过.*$/, '');
+        f = f.replace(/[，,、\s～~!！]+$/, '').replace(/[吖呐哦呀啦哈嘛哟]+$/, '');
+        f = f.replace(/^(各位同学|同学们)\s*/, '').replace(/^[，,、\s]+|[，,、\s]+$/g, '').trim();
+        if (f.length < 4) continue;
+        if (f.length > 40) f = f.slice(0, 40) + '…';
+        addPoint(out, f);
+      }
+    }
+    return out.slice(0, 5);
+  }
+
+  // 一条消息如果是“活动”，返回条目；是截止类或没日期，返回 null
+  // titleSrc 用来取标题和要点（可能是合并了标题行的整条消息）
+  function parseEventMessage(msg, today, titleSrc){
+    var t = toDigits(stripNoise(normalize(stripEmoji(msg))));
+    var d = findDate(t, today);
+    if (!d || d.invalid) return null;
+    var idx = t.indexOf(d.raw);
+    var afterDate = t.slice(idx + d.raw.length);
+    if (/^\s*[】\]]?\s*(前|之前|以前|截止|截至)/.test(afterDate)) return null;
+
+    var place = findPlace(msg);
+    // 这一段自己写了“地点另行通知/待定”，就不要从整条消息里借地点
+    var saysTBD = /(地点|场地|地址)\s*[:：]?\s*(另行通知|另定|待定|未定|暂定|见群|群内)/.test(normalize(msg));
+    // 只清掉“另行通知”本身；这一段明确写了别的地点就保留
+    if (/^(另行通知|另定|待定|未定|暂定|见群|群内通知|另行告知)/.test(place)) place = '';
+
+    // 地点：优先用整条消息里“地点：”那一行（常与时间分开写）
+    if (!place && !saysTBD && titleSrc) {
+      var lp = findPlace(titleSrc);
+      if (lp && !/^(另行通知|待定|未定|见群)/.test(lp)) place = lp;
+    }
+    var periodHint = /(今晚|明晚)/.test(d.raw) ? '晚上' : '';
+    var tr = findTimeRange(afterDate.slice(0, 32), periodHint);
+    var isEvent = !!place || !!(tr && tr.eh !== null) ||
+      (KIND_RE.test(t) && !!tr && /(开展|举行|召开|举办|上课|参加|集合|开会|培训)/.test(t));
+    if (!isEvent) return null;
+
+    var extra = [];
+    var time, endTime = '';
+    if (tr) {
+      time = hm(tr.sh, tr.sm);
+      if (tr.eh !== null) endTime = hm(tr.eh, tr.em);
+    } else {
+      time = '09:00';
+      extra.push('原文没写开始时间，默认 9:00，请核对');
+    }
+    if (tr && !endTime) {
+      // 结束时间/时长常单独成句，去整条消息里找
+      var whole = toDigits(stripNoise(normalize(stripEmoji(titleSrc || msg))));
+      var endM = whole.match(/(\d{1,2})[:.](\d{2})\s*(结束|散会|解散)/);
+      if (endM) {
+        var e = (+endM[1]) * 60 + (+endM[2]);
+        if (e > tr.sh * 60 + tr.sm && e < 1440) endTime = hm(Math.floor(e / 60), e % 60);
+      }
+      if (!endTime) {
+        var dm = whole.match(/(\d{2,3})\s*分钟/);
+        var hr = whole.match(/(\d(?:\.\d)?)\s*个?\s*小时/);
+        var mins = dm ? +dm[1] : (hr ? Math.round(parseFloat(hr[1]) * 60) : 0);
+        var tot = tr.sh * 60 + tr.sm + mins;
+        if (mins > 0 && mins <= 600 && tot < 1440) endTime = hm(Math.floor(tot / 60), tot % 60);
+      }
+    }
+
+    var src = titleSrc || msg;
+    var notes = eventPoints(src);
+    // 邮箱/链接只从“非截止句”里取：报名截止句里的邮箱归报名那张卡
+    var srcForNotes = String(src).split(/[。！!？?；;\n]+/)
+      .filter(function(x){ return !DEADLINE_SENT.test(normalize(x)); }).join('\n');
+    extractNotes(srcForNotes).forEach(function(n){ if (notes.indexOf(n) === -1) notes.push(n); });
+
+    var ttl = eventTitle(src) || '未命名活动';
+    // 同一条通知里的初赛/决赛：加上阶段前缀，避免两张卡同名
+    var stage = t.match(/(初赛|复赛|决赛|预赛|半决赛)/);
+    if (stage && ttl.indexOf(stage[1]) === -1) ttl = stage[1] + '·' + ttl;
+    return {
+      kind: 'event',
+      title: ttl,
+      date: d.y + '-' + pad2(d.m) + '-' + pad2(d.d),
+      time: time,
+      endTime: endTime,
+      location: place,
+      notes: notes,
+      raw: src.replace(/\s+/g, ' ').slice(0, 80),
+      rangeEnd: d.rangeEnd || '',
+      source: '',
+      hadDate: true,
+      badDate: ''
+    };
+  }
+
+  // 同一天、同一标题、同一地点的活动视为同一条（正文复述一遍日期、群里发两遍都会中）
+  // 时间取更具体的那条：有结束时间 > 有明确开始时间 > 默认值
+  function mergeEvents(list){
+    function score(e){
+      var s = 0;
+      if (e.endTime) s += 4;
+      if (e.time && e.time !== '09:00') s += 2;
+      if (e.location) s += 1;
+      return s;
+    }
+    var out = [];
+    list.forEach(function(ev){
+      var hit = null;
+      for (var i = 0; i < out.length; i++) {
+        var o = out[i];
+        var sameSpan = (o.time === ev.time) ||
+          (o.date === ev.date && o.title === ev.title && (o.location === ev.location || !o.location || !ev.location));
+        if (o.date === ev.date && sameSpan) { hit = o; break; }
+      }
+      if (!hit) { out.push(ev); return; }
+
+      // 哪条信息更全就留哪条的时间
+      if (score(ev) > score(hit)) {
+        hit.time = ev.time;
+        hit.endTime = ev.endTime;
+      } else if (!hit.endTime && ev.endTime) {
+        hit.endTime = ev.endTime;
+      }
+      if (!hit.location && ev.location) hit.location = ev.location;
+      if (!hit.title && ev.title) hit.title = ev.title;
+      ev.notes.forEach(function(p){ addPoint(hit.notes, p); });
+    });
+    return out;
+  }
+
+  // 抽出联系方式和链接，作为备注带走
+  function extractNotes(text){
+    var notes = [];
+    var mails = text.match(/[\w.+-]+@[\w.-]+\.\w+/g) || [];
+    mails.forEach(function(m){ if (notes.indexOf('邮箱 ' + m) === -1) notes.push('邮箱 ' + m); });
+    var urls = text.match(/https?:\/\/[A-Za-z0-9\-._~:\/?#@!$&*+=%]+/g) || [];
+    urls.forEach(function(u){ if (notes.indexOf('链接 ' + u) === -1) notes.push('链接 ' + u); });
+    return notes;
+  }
+
+  // 从动作段里提炼标题
+  var HAS_VERB = /(撰写|编写|提交|上交|交到|交|发送|发出|发到|发|完成|录入|填报|填写|报名|上传|下载|打印|准备|组织|召开|开展|参加|参与|回复|汇总|整理|报送|领取|签字|确认|写|做|填|到)/;
+
+  function tidyFragment(s){
+    return String(s)
+      .replace(/[【】\[\]]/g, ' ')
+      .replace(/[（）()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/的\s+(?=[^\s])/g, '')
+      .replace(/\s*的\s*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function stripFillers(s){
+    var t = s;
+    t = t.replace(/^(并同时|并且|并|同时|还需|还须|另需|此外)/, '');
+    t = t.replace(/^(大家好|各位团支书|各位|各班|各团|各团支部|各年级|同学们)[\s、,，:：]*/, '');
+    t = t.replace(/^(请|需|须|应|务必|要求)/, '');
+    t = t.replace(/^\d{2}级[^\s，,]{0,24}?(请|需|须|应|在|于)/, '');
+    t = t.replace(/^(在|于)/, '');
+    t = t.replace(/(自行|及时|尽快)\s*$/, '');
+    t = t.replace(/[于在]\s*$/, '');
+    t = t.replace(/[\s,，。:：;；、]+$/, '');
+    return t.trim();
+  }
+
+  function cleanTitle(clause, dateRaw){
+    var t = String(clause).replace(/\s+/g, ' ').trim();
+    if (!t) return '';
+
+    // 没有日期标记时（接续子句），整段当内容清洗
+    if (!dateRaw) {
+      var solo = tidyFragment(t);
+      solo = solo.replace(/^如有[^，,]{0,40}?(请|需|应)[^，,]{0,20}?(自行)?/, '');
+      solo = stripFillers(solo);
+      solo = solo.replace(/^(将|把)/, '');
+      return solo.trim().slice(0, 48);
+    }
+
+    var idx = t.indexOf(dateRaw);
+    var before = idx > -1 ? t.slice(0, idx) : t;
+    var after = idx > -1 ? t.slice(idx + dateRaw.length) : '';
+
+    before = tidyFragment(before);
+    after = tidyFragment(after);
+
+    // 日期后紧跟的“前/之前/以前/截止”是冗余
+    var afterCore = after.replace(/^(之前|以前|前|截止|截至|前完成|前提交)\s*/, '$1').trim();
+    afterCore = after.replace(/^(之前|以前|前|截止|截至)/, '').trim();
+
+    // 日期前：优先保留最后一个“后”之后的内容（“在完成活动后撰写总结材料”→“撰写总结材料”）
+    var beforeCore = before.replace(/[于在]\s*$/, '').trim();
+    var houIdx = beforeCore.lastIndexOf('后');
+    if (houIdx > -1 && houIdx < beforeCore.length - 1) {
+      var cut = beforeCore.slice(houIdx + 1).trim();
+      if (cut.length >= 2) beforeCore = cut;
+    }
+    // 条件从句：如有意向参与…请各位团支书自行
+    var condMatch = beforeCore.match(/^如有([^，,]{0,44}?)(请|需|应)/);
+    var quoted = [];
+    if (condMatch) {
+      var qm = condMatch[1].match(/[""''「『]([^""''」』]{2,12})[""''」』]/g);
+      if (qm) quoted = qm.map(function(q){ return q.replace(/[""''「『」』]/g, ''); });
+      beforeCore = beforeCore.replace(/^如有[^，,]{0,44}?(请|需|应)[^，,]{0,24}?(自行)?/, '');
+    }
+    beforeCore = stripFillers(beforeCore);
+
+    var parts = [];
+    var beforeOk = HAS_VERB.test(beforeCore) && beforeCore.length >= 3;
+    var afterOk = HAS_VERB.test(afterCore) && afterCore.length >= 3;
+
+    if (beforeOk) parts.push(beforeCore);
+    if (afterOk) parts.push(afterCore.replace(/^(将|把)/, ''));
+    if (!parts.length) {
+      var fallback = (afterCore.length >= beforeCore.length ? afterCore : beforeCore) || before || after;
+      fallback = stripFillers(fallback);
+      if (fallback) parts.push(fallback);
+    }
+
+    var title = parts.join('，').replace(/\s+/g, ' ').trim();
+
+    // 条件从句里提到的专有名词（如“青帆”）补回前缀，避免丢失关键信息
+    if (quoted.length) {
+      var need = quoted.filter(function(q){ return title.indexOf(q) === -1; });
+      if (need.length) title = need.join('') + title;
+    }
+
+    // 去重标点、收敛长度；邮箱本身已进备注，标题里不留“邮箱：”尾巴
+    title = title.replace(/\s*(邮箱|电子邮箱|email)\s*[:：]?\s*$/i, '');
+    // 尾巴被截在“发送至/交到”这类介词上时去掉介词
+    title = title.replace(/[\s,，]*(发送至|发到|发送到|交到|交至|提交至|提交到|上传至|报送至)\s*$/g, '');
+    title = title.replace(/[，,]{2,}/g, '，').replace(/^[，,、\s]+|[\s、:：]+$/g, '');
+    if (title.length > 42) {
+      var head = title.slice(0, 42);
+      var lastPunct = Math.max(head.lastIndexOf('，'), head.lastIndexOf(' '));
+      title = (lastPunct > 16 ? head.slice(0, lastPunct) : head).trim();
+    }
+
+    return title.trim();
+  }
+
+  /* ---------------- 生成 .ics ---------------- */
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+
+  function fold(line){
+    var enc = new TextEncoder();
+    var out = [], cur = '', bytes = 0;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line.charAt(i);
+      var b = enc.encode(ch).length;
+      if (bytes + b > 75) { out.push(cur); cur = ' '; bytes = 1; }
+      cur += ch;
+      bytes += b;
+    }
+    out.push(cur);
+    return out.join('\r\n');
+  }
+
+  function utcStamp(ms){
+    return new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  }
+
+  function localToUtcMs(dateStr, timeStr){
+    var dp = dateStr.split('-'), tp = (timeStr || '23:59').split(':');
+    return Date.UTC(+dp[0], +dp[1] - 1, +dp[2], +tp[0], +tp[1]) - 8 * 3600 * 1000;
+  }
+
+  // 提前分钟数 → ics 的 TRIGGER（优先用可读的 D/W 单位）
+  function triggerFor(mins){
+    if (mins % 10080 === 0) return '-P' + (mins / 10080) + 'W';
+    if (mins % 1440 === 0) return '-P' + (mins / 1440) + 'D';
+    if (mins % 60 === 0) return '-PT' + (mins / 60) + 'H';
+    return '-PT' + mins + 'M';
+  }
+
+  function hash32(str){
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16);
+  }
+
+  function buildICS(items, opts){
+    opts = opts || {};
+    var now = utcStamp(Date.now());
+    var lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ddl-to-calendar//CN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:DDL',
+      'X-WR-TIMEZONE:Asia/Shanghai'
+    ];
+
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it.date) continue;
+      var startMs = localToUtcMs(it.date, it.time);
+      var endMs;
+      if (it.endTime) {
+        endMs = localToUtcMs(it.date, it.endTime);
+        if (endMs <= startMs) endMs = startMs + 60 * 60 * 1000;
+      } else {
+        endMs = startMs + (it.kind === 'event' ? 60 : 15) * 60 * 1000;
+      }
+      var summary = it.title || '未命名任务';
+      var desc = [];
+      if (it.source) desc.push('来源：' + it.source);
+      if (it.notes && it.notes.length) desc = desc.concat(it.notes);
+
+      lines.push('BEGIN:VEVENT');
+      // UID 用不带【急】的原标题，同一件事隔几天再导入也只会更新、不会重复
+      lines.push('UID:ddl-' + hash32(it.date + '|' + it.time + '|' + (it.uidKey || summary)) + '@ddl-to-calendar');
+      lines.push('DTSTAMP:' + now);
+      lines.push('DTSTART:' + utcStamp(startMs));
+      lines.push('DTEND:' + utcStamp(endMs));
+      lines.push('SUMMARY:' + esc(summary));
+      if (it.location) lines.push('LOCATION:' + esc(it.location));
+      if (desc.length) lines.push('DESCRIPTION:' + esc(desc.join('\n')));
+      lines.push('STATUS:CONFIRMED');
+      lines.push('TRANSP:OPAQUE');
+
+      // 每条可自定义多个提醒（分钟数）；没设就用全局
+      var minsArr = ((it.alarms && it.alarms.length) ? it.alarms : (opts.alarms || [])).slice()
+        .sort(function(a, b){ return b - a; });
+      minsArr.forEach(function(mins){
+        if (!(mins > 0)) return;
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push('DESCRIPTION:' + esc(summary));
+        lines.push('TRIGGER:' + triggerFor(mins));
+        lines.push('END:VALARM');
+      });
+
+      lines.push('END:VEVENT');
+    }
+
+    lines.push('END:VCALENDAR');
+    return lines.map(fold).join('\r\n') + '\r\n';
+  }
+
+  /* ---------------- 界面 ---------------- */
+  var items = [];
+  var today;
+  var WEEK = ['周日','周一','周二','周三','周四','周五','周六'];
+
+  // 提醒：分钟数数组；默认提前 1 天 + 3 小时
+  var globalAlarms = [1440, 180];
+  var PRESETS = [
+    {m: 10, label: '提前10分钟'},
+    {m: 60, label: '提前1小时'},
+    {m: 180, label: '提前3小时'},
+    {m: 1440, label: '提前1天'},
+    {m: 2880, label: '提前2天'},
+    {m: 10080, label: '提前1周'}
+  ];
+
+  function alarmLabel(mins){
+    if (mins % 10080 === 0) return '提前' + (mins / 10080) + '周';
+    if (mins % 1440 === 0) return '提前' + (mins / 1440) + '天';
+    if (mins % 60 === 0) return '提前' + (mins / 60) + '小时';
+    return '提前' + mins + '分钟';
+  }
+
+  function sortAlarms(){
+    globalAlarms.sort(function(a, b){ return a - b; });
+  }
+
+  // 全局提醒选项
+  function renderAlarmChips(){
+    var box = $('alarmChips');
+    if (!box) return;
+    box.innerHTML = '';
+
+    var list = PRESETS.slice();
+    globalAlarms.forEach(function(m){
+      if (!list.some(function(p){ return p.m === m; })) list.push({m: m, label: alarmLabel(m)});
+    });
+    list.sort(function(a, b){ return a.m - b.m; });
+
+    list.forEach(function(p){
+      var on = globalAlarms.indexOf(p.m) > -1;
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'chip' + (on ? ' on' : '');
+      el.textContent = p.label;
+      if (on) {
+        var x = document.createElement('span');
+        x.className = 'x';
+        x.textContent = '×';
+        el.appendChild(x);
+      }
+      el.addEventListener('click', function(){
+        var i = globalAlarms.indexOf(p.m);
+        if (i > -1) globalAlarms.splice(i, 1);
+        else globalAlarms.push(p.m);
+        sortAlarms();
+        renderAlarmChips();
+        refreshAllAlarmRows();
+      });
+      box.appendChild(el);
+    });
+  }
+
+  function refreshAllAlarmRows(){
+    Array.prototype.forEach.call(document.querySelectorAll('#list .alarmRow'), function(row){
+      if (row._refresh) row._refresh();
+    });
+  }
+
+  // 每条卡片自己的提醒行
+  function makeAlarmRow(item){
+    var row = document.createElement('div');
+    row.className = 'alarmRow';
+
+    function draw(){
+      row.innerHTML = '';
+      var lbl = document.createElement('span');
+      lbl.className = 'lbl2';
+      lbl.textContent = '提醒';
+      row.appendChild(lbl);
+
+      var cur = (item.alarms && item.alarms.length) ? item.alarms : globalAlarms;
+
+      function toggle(m){
+        if (!item.alarms) item.alarms = globalAlarms.slice();
+        var i = item.alarms.indexOf(m);
+        if (i > -1) item.alarms.splice(i, 1);
+        else item.alarms.push(m);
+        item.alarms.sort(function(a, b){ return a - b; });
+        draw();
+      }
+
+      PRESETS.forEach(function(p){
+        var on = cur.indexOf(p.m) > -1;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'mini' + (on ? ' on' : '');
+        b.textContent = p.label.replace('提前', '');
+        b.addEventListener('click', function(){ toggle(p.m); });
+        row.appendChild(b);
+      });
+
+      cur.forEach(function(m){
+        if (PRESETS.some(function(p){ return p.m === m; })) return;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'mini on';
+        b.textContent = alarmLabel(m).replace('提前', '');
+        b.addEventListener('click', function(){ toggle(m); });
+        row.appendChild(b);
+      });
+
+      var reset = document.createElement('button');
+      reset.type = 'button';
+      reset.className = 'mini';
+      reset.style.opacity = '.7';
+      reset.textContent = '跟随默认';
+      reset.addEventListener('click', function(){ item.alarms = null; draw(); });
+      row.appendChild(reset);
+    }
+
+    row._refresh = draw;
+    draw();
+    return row;
+  }
+
+  function $(id){ return document.getElementById(id); }
+
+  function toast(msg){
+    var el = $('toast');
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.classList.remove('on'); }, 2200);
+  }
+
+  // 还剩多久：今天 / 明天 / 还剩N天 / 已过期
+  function urgencyOf(dateStr, timeStr){
+    if (!dateStr) return null;
+    var p = dateStr.split('-');
+    var base = (typeof today !== 'undefined' && today) ? today : new Date();
+    var t0 = new Date(base.getFullYear(), base.getMonth(), base.getDate()).getTime();
+    var t1 = new Date(+p[0], +p[1] - 1, +p[2]).getTime();
+    var days = Math.round((t1 - t0) / 86400000);
+    if (days < 0) return {days: days, cls: 'past', text: '已过期'};
+    if (days === 0) return {days: days, cls: 'urgent', text: '今天'};
+    if (days === 1) return {days: days, cls: 'urgent', text: '明天'};
+    if (days <= 3) return {days: days, cls: 'soon', text: '还剩' + days + '天'};
+    if (days <= 7) return {days: days, cls: 'later', text: '还剩' + days + '天'};
+    return {days: days, cls: 'later', text: days + '天后'};
+  }
+
+  function dateWeekLabel(dateStr){
+    if (!dateStr) return '';
+    var p = dateStr.split('-');
+    var dt = makeDate(+p[0], +p[1], +p[2]);
+    if (!dt) return '';
+    var isPast = dt < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return WEEK[dt.getDay()] + (isPast ? ' · 已过期' : '');
+  }
+
+  function makeRow(item){
+    var box = document.createElement('div');
+    box.className = 'item';
+
+    var head = document.createElement('div');
+    head.className = 'item-head';
+
+    var titleIn = document.createElement('input');
+    titleIn.type = 'text';
+    titleIn.value = item.title;
+    titleIn.placeholder = '任务名';
+    titleIn.addEventListener('input', function(){ item.title = titleIn.value; });
+    head.appendChild(titleIn);
+
+    // 紧急度标签
+    var tag = document.createElement('span');
+    tag.className = 'tag';
+    head.appendChild(tag);
+    item._tag = tag;
+    item._box = box;
+
+    var del = document.createElement('button');
+    del.className = 'del';
+    del.type = 'button';
+    del.textContent = '×';
+    del.title = '删掉这条';
+    head.appendChild(del);
+
+    box.appendChild(head);
+
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+
+    var dateWrap = document.createElement('label');
+    var dateLbl = document.createElement('span');
+    dateLbl.className = 'lbl';
+    dateLbl.textContent = '截止日期';
+    var dateIn = document.createElement('input');
+    dateIn.type = 'date';
+    dateIn.value = item.date;
+    var wk = document.createElement('span');
+    wk.className = 'wk';
+    wk.textContent = dateWeekLabel(item.date);
+    dateWrap.appendChild(dateLbl);
+    dateWrap.appendChild(dateIn);
+    dateWrap.appendChild(wk);
+
+    var timeWrap = document.createElement('label');
+    var timeLbl = document.createElement('span');
+    timeLbl.className = 'lbl';
+    timeLbl.textContent = '截止时间';
+    var timeIn = document.createElement('input');
+    timeIn.type = 'time';
+    timeIn.value = item.time;
+    timeWrap.appendChild(timeLbl);
+    timeWrap.appendChild(timeIn);
+
+    meta.appendChild(dateWrap);
+    meta.appendChild(timeWrap);
+    box.appendChild(meta);
+
+    box.appendChild(makeAlarmRow(item));
+
+    if (item.kind === 'event') {
+      timeLbl.textContent = '开始时间';
+      var meta2 = document.createElement('div');
+      meta2.className = 'meta';
+      meta2.style.marginTop = '8px';
+
+      var placeWrap = document.createElement('label');
+      var placeLbl = document.createElement('span');
+      placeLbl.className = 'lbl';
+      placeLbl.textContent = '地点';
+      var placeIn = document.createElement('input');
+      placeIn.type = 'text';
+      placeIn.value = item.location || '';
+      placeIn.placeholder = '没写就空着';
+      placeIn.addEventListener('input', function(){ item.location = placeIn.value.trim(); });
+      placeWrap.appendChild(placeLbl);
+      placeWrap.appendChild(placeIn);
+
+      var endWrap = document.createElement('label');
+      var endLbl = document.createElement('span');
+      endLbl.className = 'lbl';
+      endLbl.textContent = '结束时间';
+      var endIn = document.createElement('input');
+      endIn.type = 'time';
+      endIn.value = item.endTime || '';
+      var setEnd = function(){ item.endTime = endIn.value || ''; };
+      endIn.addEventListener('change', setEnd);
+      endIn.addEventListener('input', setEnd);
+      endWrap.appendChild(endLbl);
+      endWrap.appendChild(endIn);
+
+      meta2.appendChild(placeWrap);
+      meta2.appendChild(endWrap);
+      box.appendChild(meta2);
+    }
+
+    if (item.raw) {
+      var det = document.createElement('details');
+      det.className = 'raw';
+      var sm = document.createElement('summary');
+      sm.textContent = '对一下原文';
+      var p = document.createElement('p');
+      p.textContent = item.raw;
+      det.appendChild(sm);
+      det.appendChild(p);
+      box.appendChild(det);
+    }
+
+    if (item.notes && item.notes.length) {
+      var ul = document.createElement('ul');
+      ul.className = 'points';
+      item.notes.forEach(function(n){
+        var li = document.createElement('li');
+        li.textContent = n;
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    }
+
+    function refreshMiss(){
+      var missing = !item.date;
+      box.classList.toggle('miss', missing);
+      dateLbl.textContent = missing ? '缺日期 — 手动选一下' : '截止日期';
+
+      var u = urgencyOf(item.date, item.time);
+      if (tag) {
+        if (u) {
+          tag.className = 'tag ' + u.cls;
+          tag.textContent = u.text;
+          tag.style.display = '';
+          box.classList.toggle('past', u.cls === 'past');
+        } else {
+          tag.style.display = 'none';
+          box.classList.remove('past');
+        }
+      }
+    }
+
+    dateIn.addEventListener('change', function(){
+      item.date = dateIn.value;
+      wk.textContent = dateWeekLabel(item.date);
+      refreshMiss();
+      updateCount();
+    });
+    dateIn.addEventListener('input', function(){
+      item.date = dateIn.value;
+      wk.textContent = dateWeekLabel(item.date);
+      refreshMiss();
+      updateCount();
+    });
+    timeIn.addEventListener('change', function(){ item.time = timeIn.value || '23:59'; refreshMiss(); });
+    timeIn.addEventListener('input', function(){ item.time = timeIn.value || '23:59'; refreshMiss(); });
+
+    del.addEventListener('click', function(){
+      var idx = items.indexOf(item);
+      if (idx > -1) items.splice(idx, 1);
+      box.remove();
+      updateCount();
+      if (!items.length) { $('listCard').style.display = 'none'; $('exportCard').style.display = 'none'; }
+    });
+
+    refreshMiss();
+    return box;
+  }
+
+  function updateCount(){
+    $('count').textContent = String(items.length);
+    $('exportCard').style.display = items.length ? 'block' : 'none';
+    if ($('preview') && $('preview').style.display !== 'none') renderPreview();
+  }
+
+  // 导出前用纯文字列一遍：按时间排序，标出提醒、地点、缺日期、已过期
+  function previewText(){
+    var base = today || new Date();
+    var todayKey = base.getFullYear() + '-' + pad2(base.getMonth() + 1) + '-' + pad2(base.getDate());
+    var sorted = items.slice().sort(function(a, b){
+      return ((a.date || '9999') + a.time).localeCompare((b.date || '9999') + b.time);
+    });
+    return sorted.map(function(it){
+      if (!it.date) return '⚠ 缺日期，不会导出  ' + (it.title || '未命名');
+      var p = it.date.split('-');
+      var s = p[1] + '/' + p[2] + ' ' + WEEK[makeDate(+p[0], +p[1], +p[2]).getDay()] + ' ' + it.time;
+      if (it.endTime) s += '-' + it.endTime;
+      s += '  ' + (it.title || '未命名');
+      if (it.location) s += '  @' + it.location;
+      var al = (it.alarms && it.alarms.length) ? it.alarms : globalAlarms;
+      s += '\n      提醒：' + (al.length ? al.slice().sort(function(a, b){ return b - a; }).map(alarmLabel).join('、') : '无');
+      var ug = urgencyOf(it.date, it.time);
+      if (ug) s += '  （' + ug.text + '）';
+      return s;
+    }).join('\n');
+  }
+
+  function renderPreview(){
+    $('preview').textContent = items.length ? previewText() : '（没有条目）';
+  }
+
+  function renderUnparsed(lines, badOnes){
+    var box = $('unparsedBox');
+    box.innerHTML = '';
+    badOnes = badOnes || [];
+    if (!lines.length && !badOnes.length) return;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'unparsed';
+    var h = document.createElement('h3');
+    var total = lines.length + badOnes.length;
+    h.textContent = '这 ' + total + ' 行要你看一眼';
+    var p = document.createElement('p');
+    p.textContent = badOnes.length
+      ? '有的日期本身不存在（比如 2 月 30 日），已经放进下面的列表但没填日期，请手动选；其余没认出日期的在这儿，点「手动加」放进列表。'
+      : '它们在下面，没丢掉。点「手动加」放进列表，再自己选日期。';
+    wrap.appendChild(h);
+    wrap.appendChild(p);
+
+    var ul = document.createElement('ul');
+    lines.forEach(function(line){
+      var li = document.createElement('li');
+      var span = document.createElement('span');
+      span.className = 'txt';
+      span.textContent = line;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '手动加';
+      btn.addEventListener('click', function(){
+        var it = {title: line.slice(0, 60), date:'', time:'23:59', source:'', hadDate:false};
+        items.push(it);
+        $('list').appendChild(makeRow(it));
+        $('listCard').style.display = 'block';
+        updateCount();
+        li.remove();
+      });
+      li.appendChild(span);
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    wrap.appendChild(ul);
+    box.appendChild(wrap);
+  }
+
+  function runParse(){
+    var baseVal = $('baseDate') ? $('baseDate').value : '';
+    today = baseVal ? (function(){
+      var p = baseVal.split('-');
+      return new Date(+p[0], +p[1] - 1, +p[2], 12, 0, 0);
+    })() : new Date();
+    var raw = $('input').value;
+    var lines = raw.split(/\r?\n/).filter(function(l){ return l.trim(); });
+    var parsed = [], missed = [], badOnes = [];
+
+    // 判断输入形态
+    // 清单体（每行一条任务 + 日期）：行数 ≥2、平均行长 ≤40、没有任何长句（> 55 字）、有日期行占比足够
+    // 通知体：有任何一行超过 55 字，或者没有日期行
+    var lineHasDate = lines.map(function(l){ return !!findDate(stripNoise(normalize(l)), today); });
+    var datedLines = lineHasDate.filter(Boolean).length;
+    var avgLen = lines.reduce(function(a, l){ return a + l.length; }, 0) / (lines.length || 1);
+    var maxLen = lines.reduce(function(a, l){ return Math.max(a, l.length); }, 0);
+    // 任意一行超过 55 字 → 肯定是通知体（有散文句子）
+    var hasLongLine = maxLen > 55;
+    // 清单特征：短行为主 + 有日期行 + 没有长句
+    var isList = !hasLongLine && avgLen <= 40 && datedLines >= Math.max(1, lines.length * 0.15);
+    var noticeMode = !isList;
+
+    if (noticeMode) {
+      // 先把连着复制的多条消息切开，每条判断是“活动”还是“截止”
+      var events = [];
+      var handleMsg = function(msg){
+        // 同一条消息里可能有多个日期：逐个日期段判断
+        var units = dateUnits(msg);
+        if (!units.length) {
+          var segOnly = segmentNotice(msg, today);
+          segOnly.dated.forEach(function(f){ parsed.push(noticeItem(f, msg)); });
+          segOnly.leftovers.forEach(function(s){
+            if (s.replace(/\s/g, '').length > 8) missed.push(s.trim());
+          });
+          return;
+        }
+        units.forEach(function(u){
+          var ev = parseEventMessage(u, today, msg);
+          if (ev) { events.push(ev); return; }
+          var seg = segmentNotice(u, today);
+          seg.dated.forEach(function(f){ parsed.push(noticeItem(f, msg)); });
+        });
+      };
+      splitMessages(raw).forEach(function(msg){
+        handleMsg(msg);
+      });
+      parsed = mergeEvents(events).concat(parsed);
+    } else {
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        var item = parseLine(line, today);
+        if (item && item.badDate) badOnes.push({line: line, raw: item.badDate, item: item});
+        else if (item && item.hadDate) parsed.push(item);
+        else missed.push(line);
+      }
+    }
+
+    parsed = expandRanges(parsed);
+    items = parsed;
+    var list = $('list');
+    list.innerHTML = '';
+    parsed.forEach(function(it){ list.appendChild(makeRow(it)); });
+
+    // 日期写错的行也放进列表（方便直接改），同时在提示区点名
+    badOnes.forEach(function(b){
+      items.push(b.item);
+      list.appendChild(makeRow(b.item));
+    });
+
+    renderUnparsed(missed, badOnes);
+
+    if (items.length) {
+      $('listCard').style.display = 'block';
+      updateCount();
+      toast('认出 ' + parsed.length + ' 条' + (missed.length || badOnes.length ? '，' + (missed.length + badOnes.length) + ' 处要你确认' : '') + (noticeMode ? '（按通知体拆分）' : ''));
+    } else {
+      $('listCard').style.display = missed.length ? 'block' : 'none';
+      $('exportCard').style.display = 'none';
+      items = [];
+      if (missed.length) updateCount();
+      toast('没认出带日期的内容，看看下面列出来的原文');
+    }
+  }
+
+  // 有系统分享面板就直接唤起（iOS/安卓上可以一步“存到日历”或发给微信），否则退回下载
+  function canShareFiles(filename, ics){
+    try {
+      if (typeof navigator === 'undefined' || !navigator.canShare || typeof File === 'undefined') return false;
+      var f = new File([ics], filename, {type: 'text/calendar'});
+      return navigator.canShare({files: [f]});
+    } catch (e) { return false; }
+  }
+
+  function shareFile(filename, ics, onFallback){
+    try {
+      var f = new File([ics], filename, {type: 'text/calendar'});
+      navigator.share({files: [f], title: 'DDL 日历'}).catch(function(){
+        if (onFallback) onFallback();
+      });
+      return true;
+    } catch (e) {
+      if (onFallback) onFallback();
+      return false;
+    }
+  }
+
+  function downloadICS(filename, ics){
+    var blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  function exportICS(){
+    var ready = items.filter(function(it){ return it.date; });
+    if (!ready.length) { toast('还没有带日期的条目'); return; }
+
+    var markUrgent = $('urgentMark') ? $('urgentMark').checked : false;
+    var outItems = ready.map(function(it){
+      var c = {};
+      for (var k in it) if (k.charAt(0) !== '_') c[k] = it[k];
+      c.uidKey = it.title;
+      if (markUrgent) {
+        var u = urgencyOf(it.date, it.time);
+        if (u && u.days >= 0 && u.days <= 3 && !/^【急】/.test(c.title || '')) c.title = '【急】' + (c.title || '');
+      }
+      return c;
+    });
+    var ics = buildICS(outItems, {alarms: globalAlarms});
+    var d = new Date();
+    var name = 'ddl-' + d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate()) + '.ics';
+    var skipped = items.length - ready.length;
+    var note = '已生成 ' + ready.length + ' 条' + (skipped ? '（' + skipped + ' 条缺日期已跳过）' : '');
+
+    if (canShareFiles(name, ics)) {
+      shareFile(name, ics, function(){ downloadICS(name, ics); });
+      toast('选「存储到文件」或直接选日历 / 微信');
+    } else {
+      downloadICS(name, ics);
+      toast(note);
+    }
+  }
+
+  // 只复制成文字，方便直接发给别人
+  function copyAsText(){
+    var ready = items.filter(function(it){ return it.date; });
+    if (!ready.length) { toast('还没有带日期的条目'); return; }
+    var lines = ready.slice().sort(function(a, b){
+      return (a.date + a.time).localeCompare(b.date + b.time);
+    }).map(function(it){
+      var p = it.date.split('-');
+      var s = p[1] + '月' + p[2] + '日 ' + it.time + ' ' + it.title;
+      if (it.location) s += ' @' + it.location;
+      return s;
+    });
+    var text = lines.join('\n');
+    var done = function(){ toast('已复制 ' + ready.length + ' 条'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+
+  function fallbackCopy(text, done){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); }
+    catch (e) { toast('复制失败，请手动选择文字'); }
+    document.body.removeChild(ta);
+  }
+
+  var DEMO = [
+    '法理学论文初稿 11月20日 23:59 不少于3000字',
+    '【社团】例会材料提交 11/18 20:00 PPT+预算',
+    '刑法总论案例作业 本周五下午5点',
+    '刑事诉讼法读书笔记 下周三',
+    '英语四级模拟考 12月14日 上午9点',
+    '团日活动材料 今晚'
+  ].join('\n');
+
+  function boot(){
+    today = new Date();
+    renderAlarmChips();
+    if ($('baseDate')) $('baseDate').value = '';
+    if ($('resetBase')) {
+      $('resetBase').addEventListener('click', function(){
+        $('baseDate').value = '';
+        toast('已回到今天');
+      });
+    }
+
+    $('addAlarm').addEventListener('click', function(){
+      var v = parseInt($('customVal').value, 10);
+      var unit = parseInt($('customUnit').value, 10);
+      if (!(v > 0) || !(unit > 0)) { toast('先填个数字'); return; }
+      var mins = v * unit;
+      if (mins > 525600) { toast('最大提前一年'); return; }
+      if (globalAlarms.indexOf(mins) === -1) globalAlarms.push(mins);
+      sortAlarms();
+      $('customVal').value = '';
+      renderAlarmChips();
+      refreshAllAlarmRows();
+      toast(alarmLabel(mins));
+    });
+    $('parse').addEventListener('click', runParse);
+    $('export').addEventListener('click', exportICS);
+    $('copyText').addEventListener('click', copyAsText);
+
+    $('previewBtn').addEventListener('click', function(){
+      var pv = $('preview');
+      var show = pv.style.display === 'none';
+      pv.style.display = show ? 'block' : 'none';
+      $('previewBtn').textContent = show ? '收起预览' : '导出前预览';
+      if (show) renderPreview();
+    });
+
+    // 同目录有 demo.mp4 就显示视频，没有就保持提示文字
+    var vid = $('demoVideo');
+    if (vid) {
+      vid.addEventListener('loadedmetadata', function(){
+        vid.style.display = 'block';
+        $('demoHow').style.display = 'none';
+      });
+      vid.addEventListener('error', function(){ vid.style.display = 'none'; });
+    }
+
+    // 一键读剪贴板：微信里复制完通知，直接点这里
+    $('pasteBtn').addEventListener('click', function(){
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        toast('这个浏览器不支持读剪贴板，长按输入框粘贴');
+        $('input').focus();
+        return;
+      }
+      navigator.clipboard.readText().then(function(txt){
+        if (!txt || !txt.trim()) { toast('剪贴板是空的'); return; }
+        $('input').value = txt;
+        runParse();
+      }, function(){
+        toast('没有读取权限，长按输入框手动粘贴');
+        $('input').focus();
+      });
+    });
+    $('demo').addEventListener('click', function(){ $('input').value = DEMO; runParse(); });
+    $('clear').addEventListener('click', function(){
+      $('input').value = '';
+      items = [];
+      $('list').innerHTML = '';
+      $('unparsedBox').innerHTML = '';
+      $('listCard').style.display = 'none';
+      $('exportCard').style.display = 'none';
+    });
+    $('add').addEventListener('click', function(){
+      var it = {title:'', date:'', time:'23:59', source:'', hadDate:false};
+      items.push(it);
+      var row = makeRow(it);
+      $('list').appendChild(row);
+      updateCount();
+      var inp = row.querySelector('input');
+      if (inp) inp.focus();
+    });
+  }
+
+  if (typeof document !== 'undefined') boot();
+  if (typeof window !== 'undefined') {
+    window.__ddl = {
+      normalize: normalize, toDigits: toDigits, findDate: findDate,
+      findTime: findTime, parseLine: parseLine, buildICS: buildICS,
+      esc: esc, fold: fold, makeDate: makeDate,
+      segmentNotice: segmentNotice, cleanTitle: cleanTitle, stripNoise: stripNoise,
+      noticeItem: noticeItem, extractNotes: extractNotes,
+      splitMessages: splitMessages, parseEventMessage: parseEventMessage,
+      mergeEvents: mergeEvents, eventPoints: eventPoints, findPlace: findPlace,
+      dateUnits: dateUnits, eventTitle: eventTitle
+    };
+  }
+})();
+</script>
+</body>
+</html>
